@@ -47,10 +47,10 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Mutation struct {
-		AddTask           func(childComplexity int, title string, description *string) int
+		AddTask           func(childComplexity int, title string, description *string, dueDate *string) int
 		DeleteTask        func(childComplexity int, id string) int
 		MarkTaskCompleted func(childComplexity int, id string) int
-		UpdateTask        func(childComplexity int, id string, title *string, description *string, status *string) int
+		UpdateTask        func(childComplexity int, id string, title *string, description *string, status *string, dueDate *string) int
 	}
 
 	Query struct {
@@ -60,6 +60,7 @@ type ComplexityRoot struct {
 
 	Task struct {
 		Description func(childComplexity int) int
+		DueDate     func(childComplexity int) int
 		ID          func(childComplexity int) int
 		Status      func(childComplexity int) int
 		Title       func(childComplexity int) int
@@ -67,8 +68,8 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	AddTask(ctx context.Context, title string, description *string) (*model.Task, error)
-	UpdateTask(ctx context.Context, id string, title *string, description *string, status *string) (*model.Task, error)
+	AddTask(ctx context.Context, title string, description *string, dueDate *string) (*model.Task, error)
+	UpdateTask(ctx context.Context, id string, title *string, description *string, status *string, dueDate *string) (*model.Task, error)
 	DeleteTask(ctx context.Context, id string) (bool, error)
 	MarkTaskCompleted(ctx context.Context, id string) (*model.Task, error)
 }
@@ -106,7 +107,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.AddTask(childComplexity, args["title"].(string), args["description"].(*string)), true
+		return e.complexity.Mutation.AddTask(childComplexity, args["title"].(string), args["description"].(*string), args["dueDate"].(*string)), true
 
 	case "Mutation.deleteTask":
 		if e.complexity.Mutation.DeleteTask == nil {
@@ -142,7 +143,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpdateTask(childComplexity, args["id"].(string), args["title"].(*string), args["description"].(*string), args["status"].(*string)), true
+		return e.complexity.Mutation.UpdateTask(childComplexity, args["id"].(string), args["title"].(*string), args["description"].(*string), args["status"].(*string), args["dueDate"].(*string)), true
 
 	case "Query.task":
 		if e.complexity.Query.Task == nil {
@@ -169,6 +170,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.Description(childComplexity), true
+
+	case "Task.dueDate":
+		if e.complexity.Task.DueDate == nil {
+			break
+		}
+
+		return e.complexity.Task.DueDate(childComplexity), true
 
 	case "Task.id":
 		if e.complexity.Task.ID == nil {
@@ -300,6 +308,7 @@ var sources = []*ast.Source{
   title: String!
   description: String
   status: String!
+  dueDate: String
 }
 
 type Query {
@@ -308,8 +317,14 @@ type Query {
 }
 
 type Mutation {
-  addTask(title: String!, description: String): Task!
-  updateTask(id: ID!, title: String, description: String, status: String): Task!
+  addTask(title: String!, description: String, dueDate: String): Task!
+  updateTask(
+    id: ID!
+    title: String
+    description: String
+    status: String
+    dueDate: String
+  ): Task!
   deleteTask(id: ID!): Boolean!
   markTaskCompleted(id: ID!): Task!
 }
@@ -342,6 +357,15 @@ func (ec *executionContext) field_Mutation_addTask_args(ctx context.Context, raw
 		}
 	}
 	args["description"] = arg1
+	var arg2 *string
+	if tmp, ok := rawArgs["dueDate"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dueDate"))
+		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["dueDate"] = arg2
 	return args, nil
 }
 
@@ -414,6 +438,15 @@ func (ec *executionContext) field_Mutation_updateTask_args(ctx context.Context, 
 		}
 	}
 	args["status"] = arg3
+	var arg4 *string
+	if tmp, ok := rawArgs["dueDate"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dueDate"))
+		arg4, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["dueDate"] = arg4
 	return args, nil
 }
 
@@ -499,7 +532,7 @@ func (ec *executionContext) _Mutation_addTask(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AddTask(rctx, fc.Args["title"].(string), fc.Args["description"].(*string))
+		return ec.resolvers.Mutation().AddTask(rctx, fc.Args["title"].(string), fc.Args["description"].(*string), fc.Args["dueDate"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -532,6 +565,8 @@ func (ec *executionContext) fieldContext_Mutation_addTask(ctx context.Context, f
 				return ec.fieldContext_Task_description(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "dueDate":
+				return ec.fieldContext_Task_dueDate(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -564,7 +599,7 @@ func (ec *executionContext) _Mutation_updateTask(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UpdateTask(rctx, fc.Args["id"].(string), fc.Args["title"].(*string), fc.Args["description"].(*string), fc.Args["status"].(*string))
+		return ec.resolvers.Mutation().UpdateTask(rctx, fc.Args["id"].(string), fc.Args["title"].(*string), fc.Args["description"].(*string), fc.Args["status"].(*string), fc.Args["dueDate"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -597,6 +632,8 @@ func (ec *executionContext) fieldContext_Mutation_updateTask(ctx context.Context
 				return ec.fieldContext_Task_description(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "dueDate":
+				return ec.fieldContext_Task_dueDate(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -717,6 +754,8 @@ func (ec *executionContext) fieldContext_Mutation_markTaskCompleted(ctx context.
 				return ec.fieldContext_Task_description(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "dueDate":
+				return ec.fieldContext_Task_dueDate(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -782,6 +821,8 @@ func (ec *executionContext) fieldContext_Query_tasks(_ context.Context, field gr
 				return ec.fieldContext_Task_description(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "dueDate":
+				return ec.fieldContext_Task_dueDate(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -833,6 +874,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_description(ctx, field)
 			case "status":
 				return ec.fieldContext_Task_status(ctx, field)
+			case "dueDate":
+				return ec.fieldContext_Task_dueDate(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -1141,6 +1184,47 @@ func (ec *executionContext) _Task_status(ctx context.Context, field graphql.Coll
 }
 
 func (ec *executionContext) fieldContext_Task_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_dueDate(ctx context.Context, field graphql.CollectedField, obj *model.Task) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_dueDate(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DueDate, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Task_dueDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Task",
 		Field:      field,
@@ -3123,6 +3207,8 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "dueDate":
+			out.Values[i] = ec._Task_dueDate(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
